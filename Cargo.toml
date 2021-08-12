@@ -5,7 +5,15 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "sha256"
+crate-type = ["cdylib"]
+
 [dependencies]
 hex = "0.4.3"
 log = "0.4.14"
 env_logger = "0.9.0"
+
+[dependencies.pyo3]
+version = "0.14.2"
+features = ["extension-module"]
