@@ -168,62 +168,60 @@ impl SHA256 {
     Pre process a u8 array. As defined in SHA256 standard
   */
   fn pre_process(&self, chars: &[u8]) -> Vec<Wrapping<u32>> {
-    let mut out: Vec<Wrapping<u32>> = Vec::new();
+    // Calculate size of padded u8 length
+    let base_size: usize = chars.len();
+    let to_add: usize = 64 - ((chars.len() + 1 + 8) % 64) + 1 + 8;
+    let padded_size: usize = base_size + to_add;
 
-    // convert character input to 32 bit words with a single 1 marking the end of input
-    for (i, _e) in chars.iter().enumerate() {
-      if i % 4 == 0 {
-        let tmp_1: u16;
-        let tmp_2: u16;
-        let tmp_3: Wrapping<u32>;
-        
-        if i + 3 < chars.len() && i + 4 != chars.len() {
-        // If more of file to come process normally
-          tmp_1 = ((chars[i] as u16) << 8) | chars[i+1] as u16;
-          tmp_2 = ((chars[i+2] as u16) << 8) | chars[i+3] as u16;
-          tmp_3 = Wrapping(((tmp_1 as u32) << 16) | tmp_2 as u32);
-          out.push(tmp_3);
-        } else {
-        // Else end of array. Set values and add a 1 to mark the final byte and then 0x00 to the rest
-          let remaining: usize = chars.len() - i;
-          if remaining == 1 {
-            tmp_1 = (chars[i] as u16) << 8 | 0x80;
-            tmp_2 = 0;
-            tmp_3 = Wrapping(((tmp_1 as u32) << 16) | tmp_2 as u32);
-            out.push(tmp_3);
-          } else if remaining == 2 {
-            tmp_1 = ((chars[i] as u16) << 8) | chars[i+1] as u16;
-            tmp_2 = 0x8000;
-            tmp_3 = Wrapping(((tmp_1 as u32) << 16) | tmp_2 as u32);
-            out.push(tmp_3);
-          } else if remaining == 3 {
-            tmp_1 = ((chars[i] as u16) << 8) | chars[i+1] as u16;
-            tmp_2 = (chars[i+2] as u16) << 8 | 0x80;
-            tmp_3 = Wrapping(((tmp_1 as u32) << 16) | tmp_2 as u32);
-            out.push(tmp_3);
-          } else if remaining == 4 {
-            tmp_1 = ((chars[i] as u16) << 8) | chars[i+1] as u16;
-            tmp_2 = (chars[i+2] as u16) << 8 | chars[i+3] as u16;
-            tmp_3 = Wrapping(((tmp_1 as u32) << 16) | tmp_2 as u32);
-            out.push(tmp_3);
-            out.push(Wrapping(0x80000000));
-          }
-        }
-      }
+    // Create a vector of the corect sizshe to store the fully padded data and populate with initial data
+    let mut tmp: Vec<Wrapping<u8>> = vec![Wrapping(0); padded_size];
+    for i in 0..chars.len() {
+      tmp[i] = Wrapping(chars[i]);
+    }
+    
+    //Append the end of message marker
+    tmp[chars.len()] = Wrapping(0x80);
+    
+    // Calculate message length and append to the end
+    let msg_len: [Wrapping<u8>; 8] = self.u64_to_u8(Wrapping((chars.len() * 8) as u64));
+    for i in 0..8 {
+      let index: usize = tmp.len() - 8 + i;
+      tmp[index] = msg_len[i];  
     }
 
-    // Pad to nearest 512 bits less 64 bits for message length
-    while out.len() * 32 % 512 != 448 {
-      out.push(Wrapping(0x0000));
+    // Finally convert to 32 bit
+    let mut out_arr: Vec<Wrapping<u32>> = vec![Wrapping(0); padded_size / 4];
+    for i in (0..padded_size).step_by(4) {
+      out_arr[i/4] = self.u8_slice_to_u32(&tmp[i..i + 4]);
     }
 
-    // Finally add message length
-    let msg_len: u64 = (chars.len() * 8) as u64;
-    let msg_l = Wrapping((msg_len >> 32) as u32);
-    let msg_r = Wrapping(msg_len as u32);
-    out.push(msg_l);
-    out.push(msg_r);
+    return out_arr; 
+  }
 
-    return out; 
+  /*
+    Convert a 4 long u8 slice to a u32. Hasher therefore everything is inside wrapper 
+  */
+  fn u8_slice_to_u32(&self, slice: &[Wrapping<u8>]) -> Wrapping<u32> {
+    let mut array: [u8; 4] = [0; 4];
+    for i in 0..4 {
+       array[i] = slice[i].0; 
+    }
+    return Wrapping(u32::from_be_bytes(array));
+  }
+
+  /*
+    Convert a u64 to an array of u8's using big endian. Hasher therefore everything is inside wrapper 
+  */
+  fn u64_to_u8(&self, arr: Wrapping<u64>) -> [Wrapping<u8>; 8]{
+    let b0 = (arr.0 >> 56) as u8;
+    let b1 = (arr.0 >> 48) as u8;
+    let b2 = (arr.0 >> 40) as u8;
+    let b3 = (arr.0 >> 32) as u8;
+    let b4 = (arr.0 >> 24) as u8;
+    let b5 = (arr.0 >> 16) as u8;
+    let b6 = (arr.0 >> 8) as u8;
+    let b7 = arr.0 as u8;
+
+    return [Wrapping(b0), Wrapping(b1), Wrapping(b2), Wrapping(b3), Wrapping(b4), Wrapping(b5), Wrapping(b6), Wrapping(b7)];
   }
 }
