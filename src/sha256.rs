@@ -1,4 +1,6 @@
 use std::num::Wrapping;
+use pyo3::prelude::*;
+use pyo3::types::PyTuple;
 
 /*
   SHA256 Hasher properties
@@ -6,6 +8,7 @@ use std::num::Wrapping;
 pub struct SHA256 {
   h: [Wrapping<u32>; 8], // The hash
   k: [Wrapping<u32>; 64], // The round constants
+  reporter: *const PyObject // A python reporter
 }
 
 /*
@@ -41,17 +44,33 @@ impl SHA256 {
         Wrapping(0x391c0cb3), Wrapping(0x4ed8aa4a), Wrapping(0x5b9cca4f), Wrapping(0x682e6ff3),
         Wrapping(0x748f82ee), Wrapping(0x78a5636f), Wrapping(0x84c87814), Wrapping(0x8cc70208),
         Wrapping(0x90befffa), Wrapping(0xa4506ceb), Wrapping(0xbef9a3f7), Wrapping(0xc67178f2)
-      ]
+      ],
+      reporter: std::ptr::null()
     }
   }
 
   /*
     Hash a u8 array and output as a hex string 
   */
-  pub fn hash_u8_to_string(&mut self, val: &[u8]) -> String {
+  pub fn hash_u8_to_string(&mut self, val: &[u8], reporter: *const PyObject) -> String {
+    //Set the reporter if provided
+    if !(reporter.is_null()) {
+      self.reporter = reporter;
+    }
+
     let l: Vec<Wrapping<u32>> = self.pre_process(val);
     self.chunk_loop(l);
     return self.to_string();
+  }
+
+  pub fn report_to_python(&self, value: String) {
+    if !(self.reporter.is_null()) {
+      unsafe {
+        let gil = Python::acquire_gil();
+        let args = PyTuple::new(gil.python(), &[value]);
+        let _result = (*self.reporter).call_method1(gil.python(), "report", args);
+      }
+    }
   }
 
   /*
@@ -109,6 +128,12 @@ impl SHA256 {
       self.compress(chunk);
       log::debug!("...finished compression of chunk {}", i);
       log::debug!("...finished processing chunk {}", i);
+      
+      // Report approx every 10% done
+      let complete_perc = (i as f64)/(no_of_blocks as f64) as f64;
+      if (complete_perc % 0.1) < 0.0001 && (complete_perc % 0.1) > -0.0001 {
+        self.report_to_python(format!("{}", complete_perc)); 
+      }
     }
   }
 
