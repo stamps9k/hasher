@@ -173,7 +173,7 @@ impl SHA256 {
     let to_add: usize = 64 - ((chars.len() + 1 + 8) % 64) + 1 + 8;
     let padded_size: usize = base_size + to_add;
 
-    // Create a vector of the corect sizshe to store the fully padded data and populate with initial data
+    // Create a vector of the corect size to store the fully padded data and populate with initial data
     let mut tmp: Vec<Wrapping<u8>> = vec![Wrapping(0); padded_size];
     for i in 0..chars.len() {
       tmp[i] = Wrapping(chars[i]);
