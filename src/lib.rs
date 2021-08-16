@@ -10,7 +10,11 @@ fn sha256(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn hash_string(s: String) -> PyResult<String> {
+fn hash_string(py: Python, s: String) -> PyResult<String> {
+  py.allow_threads(|| hash_string_threaded(s))
+}
+
+fn hash_string_threaded(s: String) -> PyResult<String> {
   let to_hash = s.as_bytes().to_vec();
   let mut hasher = sha256::SHA256::new(); 
   let hashed: String = hasher.hash_u8_to_string(&to_hash);
@@ -18,7 +22,11 @@ fn hash_string(s: String) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn hash_file(s: String) -> PyResult<String> {
+fn hash_file(py: Python, s: String) -> PyResult<String> {
+  py.allow_threads(|| hash_file_threaded(s))
+}
+
+fn hash_file_threaded(s: String) -> PyResult<String> {
   let file = std::path::Path::new(&s);
   let to_hash: Vec<u8>; // Declare the bytes to be hashed at this level so that it can be read by the hasher
 
