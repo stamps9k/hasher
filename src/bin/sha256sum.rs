@@ -1,4 +1,4 @@
-mod sha256;
+use hasher::hash_algorithms::sha256::SHA256; 
 
 fn main() -> std::io::Result<()> {
   env_logger::init();
@@ -28,7 +28,7 @@ fn main() -> std::io::Result<()> {
     to_hash = file_as_str.as_bytes().to_vec();
   } 
 
-  let mut hasher = sha256::SHA256::new(); 
+  let mut hasher = SHA256::new(); 
   let hashed: String = hasher.hash_u8_to_string(&to_hash, None);
   println!("{}", hashed);
 

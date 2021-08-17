@@ -1,9 +1,10 @@
-mod sha256;
+pub mod hash_algorithms;
 
 use pyo3::prelude::*;
+use hash_algorithms::sha256::SHA256;
 
 #[pymodule]
-fn sha256(_py: Python, m: &PyModule) -> PyResult<()> {
+fn hasher(_py: Python, m: &PyModule) -> PyResult<()> {
   m.add_function(wrap_pyfunction!(hash_string, m)?)?;
   m.add_function(wrap_pyfunction!(hash_file, m)?)?;
   Ok(())
@@ -18,7 +19,7 @@ fn hash_string_threaded(s: String, reporter: PyObject) -> PyResult<String> {
   log::debug!("Hash string function called by python");
 
   let to_hash = s.as_bytes().to_vec();
-  let mut hasher = sha256::SHA256::new(); 
+  let mut hasher = SHA256::new();
   
   let reporter_option: Option<&PyObject>; 
   let gil = Python::acquire_gil();
@@ -58,7 +59,7 @@ fn hash_file_threaded(s: String, reporter: PyObject) -> PyResult<String> {
     reporter_option = Some(&reporter);
   }
 
-  let mut hasher = sha256::SHA256::new(); 
+  let mut hasher = SHA256::new();
   let hashed: String = hasher.hash_u8_to_string(&to_hash, reporter_option);
 
   return Ok(hashed);
