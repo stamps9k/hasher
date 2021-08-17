@@ -5,17 +5,17 @@ use pyo3::types::PyTuple;
 /*
   SHA256 Hasher properties
 */
-pub struct SHA256 {
+pub struct SHA256<'a> {
   h: [Wrapping<u32>; 8], // The hash
   k: [Wrapping<u32>; 64], // The round constants
-  reporter: *const PyObject // A python reporter
+  reporter: Option<&'a PyObject> // A python reporter
 }
 
 /*
   SHA256 Hasher methods
 */
-impl SHA256 {
-  pub fn new() -> SHA256 {
+impl<'a> SHA256<'a> {
+  pub fn new() -> SHA256<'a> {
     return SHA256 {
       h:  [
         Wrapping(0x6a09e667),
@@ -45,30 +45,29 @@ impl SHA256 {
         Wrapping(0x748f82ee), Wrapping(0x78a5636f), Wrapping(0x84c87814), Wrapping(0x8cc70208),
         Wrapping(0x90befffa), Wrapping(0xa4506ceb), Wrapping(0xbef9a3f7), Wrapping(0xc67178f2)
       ],
-      reporter: std::ptr::null()
+      reporter: None
     }
   }
 
   /*
     Hash a u8 array and output as a hex string 
   */
-  pub fn hash_u8_to_string(&mut self, val: &[u8], reporter: *const PyObject) -> String {
-    //Set the reporter if provided
-    if !(reporter.is_null()) {
-      self.reporter = reporter;
-    }
-
+  pub fn hash_u8_to_string(&mut self, val: &[u8], reporter: Option<&'a PyObject>) -> String {
+    //Set the reporter option
+    self.reporter = reporter;
     let l: Vec<Wrapping<u32>> = self.pre_process(val);
     self.chunk_loop(l);
     return self.to_string();
   }
 
   pub fn report_to_python(&self, value: String) {
-    if !(self.reporter.is_null()) {
-      unsafe {
+    match self.reporter {
+      Some(x) => { 
         let gil = Python::acquire_gil();
         let args = PyTuple::new(gil.python(), &[value]);
-        let _result = (*self.reporter).call_method1(gil.python(), "report", args);
+        let _result = x.call_method1(gil.python(), "report", args);
+      },
+      None => {
       }
     }
   }

@@ -29,7 +29,7 @@ fn main() -> std::io::Result<()> {
   } 
 
   let mut hasher = sha256::SHA256::new(); 
-  let hashed: String = hasher.hash_u8_to_string(&to_hash, std::ptr::null());
+  let hashed: String = hasher.hash_u8_to_string(&to_hash, None);
   println!("{}", hashed);
 
   return Ok(());
